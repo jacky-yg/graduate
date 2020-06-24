@@ -8,6 +8,7 @@
 #include "table/block.h"
 #include "table/format.h"
 #include "table/iterator_wrapper.h"
+#include <iostream>
 
 namespace leveldb {
 
@@ -145,6 +146,7 @@ void TwoLevelIterator::SetDataIterator(Iterator* data_iter) {
 
 void TwoLevelIterator::InitDataBlock() {
   if (!index_iter_.Valid()) {
+    
     SetDataIterator(nullptr);
   } else {
     Slice handle = index_iter_.value();

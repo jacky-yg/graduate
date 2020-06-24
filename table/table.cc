@@ -14,6 +14,7 @@
 #include "table/format.h"
 #include "table/two_level_iterator.h"
 #include "util/coding.h"
+#include <iostream>
 
 namespace leveldb {
 
@@ -177,6 +178,7 @@ Iterator* Table::BlockReader(void* arg, const ReadOptions& options,
         block = reinterpret_cast<Block*>(block_cache->Value(cache_handle));
       } else {
         s = ReadBlock(table->rep_->file, options, handle, &contents);
+	//std::cout<<contents.data.ToString()<<std::endl;
         if (s.ok()) {
           block = new Block(contents);
           if (contents.cachable && options.fill_cache) {
@@ -187,7 +189,10 @@ Iterator* Table::BlockReader(void* arg, const ReadOptions& options,
       }
     } else {
       s = ReadBlock(table->rep_->file, options, handle, &contents);
+      //std::cout<<"iter ready : "<<contents.data.ToString()<<std::endl;
+      //std::cout<<contents.data.size()<<std::endl;
       if (s.ok()) {
+	
         block = new Block(contents);
       }
     }
@@ -218,7 +223,9 @@ Status Table::InternalGet(const ReadOptions& options, const Slice& k, void* arg,
                                                 const Slice&)) {
   Status s;
   Iterator* iiter = rep_->index_block->NewIterator(rep_->options.comparator);
+  //std::cout<<k.ToString()<<std::endl;
   iiter->Seek(k);
+  //std::cout << iiter->key().ToString() << "->" << iiter->value().ToString() << std::endl;
   if (iiter->Valid()) {
     Slice handle_value = iiter->value();
     FilterBlockReader* filter = rep_->filter;
@@ -230,6 +237,7 @@ Status Table::InternalGet(const ReadOptions& options, const Slice& k, void* arg,
       Iterator* block_iter = BlockReader(this, options, iiter->value());
       block_iter->Seek(k);
       if (block_iter->Valid()) {
+
         (*handle_result)(arg, block_iter->key(), block_iter->value());
       }
       s = block_iter->status();

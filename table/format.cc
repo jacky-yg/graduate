@@ -3,12 +3,13 @@
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 
 #include "table/format.h"
-
+#include <iostream>
 #include "leveldb/env.h"
 #include "port/port.h"
 #include "table/block.h"
 #include "util/coding.h"
 #include "util/crc32c.h"
+#include <iostream>
 
 namespace leveldb {
 
@@ -66,6 +67,7 @@ Status ReadBlock(RandomAccessFile* file, const ReadOptions& options,
   result->data = Slice();
   result->cachable = false;
   result->heap_allocated = false;
+  //std::cout<<"readblock"<<std::endl;
 
   // Read the block contents as well as the type/crc footer.
   // See table_builder.cc for the code that built this structure.
@@ -83,8 +85,10 @@ Status ReadBlock(RandomAccessFile* file, const ReadOptions& options,
   }
 
   // Check the crc of the type and the block contents
+ 
   const char* data = contents.data();  // Pointer to where Read put the data
   if (options.verify_checksums) {
+    
     const uint32_t crc = crc32c::Unmask(DecodeFixed32(data + n + 1));
     const uint32_t actual = crc32c::Value(data, n + 1);
     if (actual != crc) {
@@ -97,6 +101,7 @@ Status ReadBlock(RandomAccessFile* file, const ReadOptions& options,
   switch (data[n]) {
     case kNoCompression:
       if (data != buf) {
+	
         // File implementation gave us pointer to some other data.
         // Use it directly under the assumption that it will be live
         // while the file is open.

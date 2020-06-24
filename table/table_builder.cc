@@ -5,7 +5,7 @@
 #include "leveldb/table_builder.h"
 
 #include <assert.h>
-
+#include <iostream>
 #include "leveldb/comparator.h"
 #include "leveldb/env.h"
 #include "leveldb/filter_policy.h"
@@ -95,6 +95,9 @@ void TableBuilder::Add(const Slice& key, const Slice& value) {
   Rep* r = rep_;
   assert(!r->closed);
   if (!ok()) return;
+  /*std::cout<<"num_entries:"<<r->num_entries<<std::endl;
+  std::cout<<"current key:"<<key.ToString()<<std::endl;
+  std::cout<<"last key:"<<r->last_key<<std::endl;*/
   if (r->num_entries > 0) {
     assert(r->options.comparator->Compare(key, Slice(r->last_key)) > 0);
   }
