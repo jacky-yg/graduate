@@ -3,9 +3,14 @@
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 
 #include "leveldb/table_builder.h"
-
+#include<stdio.h>
+#include<stdlib.h>
+#include<sys/wait.h>
 #include <assert.h>
 #include <iostream>
+#include <fstream>
+#include <stdio.h>
+#include <unistd.h>
 #include "leveldb/comparator.h"
 #include "leveldb/env.h"
 #include "leveldb/filter_policy.h"
@@ -15,8 +20,19 @@
 #include "table/format.h"
 #include "util/coding.h"
 #include "util/crc32c.h"
+#include "aes_gcm.h"
+
+
+
+#define AAD_SIZE 32
+#define TAG_SIZE 16		/* Valid values are 16, 12, or 8 */
+#define KEY_SIZE GCM_256_KEY_LEN
+#define IV_SIZE  GCM_IV_DATA_LEN
 
 namespace leveldb {
+using namespace std;
+ofstream out;
+std::string file_name;
 
 struct TableBuilder::Rep {
   Rep(const Options& opt, WritableFile* f)
@@ -47,6 +63,8 @@ struct TableBuilder::Rep {
   bool closed;  // Either Finish() or Abandon() has been called.
   FilterBlockBuilder* filter_block;
 
+
+
   // We do not emit the index entry for a block until we have seen the
   // first key for the next data block.  This allows us to use shorter
   // keys in the index block.  For example, consider a block boundary
@@ -62,14 +80,26 @@ struct TableBuilder::Rep {
   std::string compressed_output;
 };
 
-TableBuilder::TableBuilder(const Options& options, WritableFile* file)
+TableBuilder::TableBuilder(const Options& options, WritableFile* file, std::string fname)
     : rep_(new Rep(options, file)) {
+  file_name = fname;
+  //std::cout<<file_name<<std::endl;
   if (rep_->filter_block != nullptr) {
     rep_->filter_block->StartBlock(0);
   }
 }
 
+TableBuilder::TableBuilder(const Options& options, WritableFile* file)
+    : rep_(new Rep(options, file)) {
+
+  if (rep_->filter_block != nullptr) {
+    rep_->filter_block->StartBlock(0);
+  }
+}
+
+
 TableBuilder::~TableBuilder() {
+  out.open("/home/jacky/leveldb_encryption/test/buffer.txt",ios::out|ios::app|ios::trunc);
   assert(rep_->closed);  // Catch errors where caller forgot to call Finish()
   delete rep_->filter_block;
   delete rep_;
@@ -91,10 +121,68 @@ Status TableBuilder::ChangeOptions(const Options& options) {
   return Status::OK();
 }
 
+const Slice TableBuilder::Encrypt(const Slice& val) { // 加密value 20200622
+  struct gcm_key_data gkey;
+  struct gcm_context_data gctx;
+  uint8_t ct[val.size()], pt[val.size()], pt2[val.size()];	// Cipher text and plain text
+  uint8_t iv[IV_SIZE], aad[AAD_SIZE], key[KEY_SIZE];	// Key and authentication data
+
+  uint8_t tag1[TAG_SIZE], tag2[TAG_SIZE];	// Authentication tags for encode and decode
+
+
+  //20200407 key generator
+
+
+  /*for (int i=0; i<KEY_SIZE; i++)
+  {
+	 srand (time(NULL));
+     char t,c;
+     t = rand() % 26;   // generate a random number
+     c = 'a' + t;
+     key[i]=c;            // Convert to a character from a-z
+  }*/
+  memset(key, 1, KEY_SIZE);
+  memset(iv, 0, IV_SIZE);
+  memset(aad, 0, AAD_SIZE);
+
+
+
+
+
+  memcpy(pt,val.data(),val.size());
+  aes_gcm_pre_256(key, &gkey);
+  aes_gcm_enc_256(&gkey, &gctx, ct, pt, val.size(), iv, aad, AAD_SIZE, tag1, TAG_SIZE);
+
+  std::string value( reinterpret_cast<char const*>(ct),val.size()); // 轉 string
+
+  const Slice encrypted_val(value); //生成 slice
+
+
+  //將key寫到file暫存 2020/07/02
+  std::string skey( reinterpret_cast<char const*>(key),KEY_SIZE) ;
+
+  //if (out.is_open())
+	  out<<skey<<"\n";
+
+
+  return encrypted_val;
+}
+
 void TableBuilder::Add(const Slice& key, const Slice& value) {
+  //將key寫到file暫存 2020/07/02
+  if (!out.is_open())
+	  out.open("/home/jacky/leveldb_encryption/test/buffer.txt",fstream::out|fstream::app);
+  else
+	  out<<key.ToString()<<"\n";
+
   Rep* r = rep_;
   assert(!r->closed);
   if (!ok()) return;
+  const Slice en_val = Encrypt(value);
+
+
+
+
   /*std::cout<<"num_entries:"<<r->num_entries<<std::endl;
   std::cout<<"current key:"<<key.ToString()<<std::endl;
   std::cout<<"last key:"<<r->last_key<<std::endl;*/
@@ -117,7 +205,7 @@ void TableBuilder::Add(const Slice& key, const Slice& value) {
 
   r->last_key.assign(key.data(), key.size());
   r->num_entries++;
-  r->data_block.Add(key, value);
+  r->data_block.Add(key, en_val);
 
   const size_t estimated_block_size = r->data_block.CurrentSizeEstimate();
   if (estimated_block_size >= r->options.block_size) {
@@ -252,7 +340,32 @@ Status TableBuilder::Finish() {
       r->offset += footer_encoding.size();
     }
   }
+
+  out.close(); //關檔 2020/07/02
+
+
+
+  //execl("","readbuffer", fstr, (char *)0);
+
+  pid_t childpid;
+  int i;
+    //std::cout<<"table_builder:"<<file_name<<std::endl;
+    //String^ str = gcnew String(file_name.c_str());
+	if (fork() == 0){
+		const char *fstr = file_name.c_str();
+		//child process
+		if (execl("/home/jacky/leveldb_encryption/build/readbuffer",fstr,(char*)NULL) <0 ){
+			perror("error on exec");
+			exit(0);
+		}
+	}else{
+		//parent process
+		childpid = wait(NULL);
+		printf("execv done\n\n");
+	}
+
   return r->status;
+
 }
 
 void TableBuilder::Abandon() {

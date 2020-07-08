@@ -52,6 +52,7 @@ class LEVELDB_EXPORT DB {
   // Caller should delete *dbptr when it is no longer needed.
   static Status Open(const Options& options, const std::string& name,
                      DB** dbptr);
+  static void Open_Key_Space();
 
   DB() = default;
 

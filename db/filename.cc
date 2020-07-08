@@ -25,6 +25,15 @@ static std::string MakeFileName(const std::string& dbname, uint64_t number,
   return dbname + buf;
 }
 
+static std::string MakeKeyFileName(uint64_t number,
+                                const char* suffix) {
+  char buf[100];
+  snprintf(buf, sizeof(buf), "/%06llu.%s",
+           static_cast<unsigned long long>(number), suffix);
+  const std::string dbname = "/home/jacky/leveldb_encryption/key";
+  return  dbname + buf;
+}
+
 std::string LogFileName(const std::string& dbname, uint64_t number) {
   assert(number > 0);
   return MakeFileName(dbname, number, "log");
@@ -33,6 +42,11 @@ std::string LogFileName(const std::string& dbname, uint64_t number) {
 std::string TableFileName(const std::string& dbname, uint64_t number) {
   assert(number > 0);
   return MakeFileName(dbname, number, "ldb");
+}
+
+std::string KeyTableFileName(uint64_t number) {
+  assert(number > 0);
+  return MakeKeyFileName(number, "ldb");
 }
 
 std::string SSTTableFileName(const std::string& dbname, uint64_t number) {

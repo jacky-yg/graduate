@@ -1,0 +1,4 @@
+雙開leveldb且用trivial move來實現
+對應： data                           key
+
+      compaction            標示刪除 等待 trivial move

@@ -15,6 +15,12 @@
 #include "table/two_level_iterator.h"
 #include "util/coding.h"
 #include <iostream>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/wait.h>
+#include <assert.h>
+#include <unistd.h>
+#include <string>
 
 namespace leveldb {
 
@@ -250,6 +256,64 @@ Status Table::InternalGet(const ReadOptions& options, const Slice& k, void* arg,
   delete iiter;
   return s;
 }
+
+Status Table::InternalGet(const ReadOptions& options, uint64_t file_number, const Slice& k, void* arg,
+                          void (*handle_result)(void*, const Slice&,
+                                                const Slice&)) {
+  Status s;
+  Iterator* iiter = rep_->index_block->NewIterator(rep_->options.comparator);
+  //std::cout<<k.ToString()<<std::endl;
+  iiter->Seek(k);
+  //std::cout << iiter->key().ToString() << "->" << iiter->value().ToString() << std::endl;
+  if (iiter->Valid()) {
+    Slice handle_value = iiter->value();
+    FilterBlockReader* filter = rep_->filter;
+    BlockHandle handle;
+    if (filter != nullptr && handle.DecodeFrom(&handle_value).ok() &&
+        !filter->KeyMayMatch(handle.offset(), k)) {
+      // Not found
+    } else {
+      Iterator* block_iter = BlockReader(this, options, iiter->value());
+      block_iter->Seek(k);
+      if (block_iter->Valid()) {
+
+        (*handle_result)(arg, block_iter->key(), block_iter->value());
+        pid_t childpid;
+        int i;
+                       	    //std::cout<<"table_builder:"<<file_name<<std::endl;
+                       	    //String^ str = gcnew String(file_name.c_str());
+  		if (fork() == 0){
+        std::string fnumber = std::to_string(file_number);
+        const char *fstr = fnumber.c_str();
+
+                       			//mpl_files.get_data(str.c_str());
+                       			//child process
+
+        std::string size = std::to_string(block_iter->value().size());
+        char const *schar = size.c_str();
+
+        if(execl("/home/jacky/leveldb_encryption/build/getkey",fstr,block_iter->key().data(),block_iter->value().data(),
+        		schar,(char*)0) <0 ){
+        perror("error on exec");
+        exit(0);
+        }
+        }else{
+                       			//parent process
+            childpid = wait(NULL);
+            printf("execvc done\n\n");
+        }
+      }
+      s = block_iter->status();
+      delete block_iter;
+    }
+  }
+  if (s.ok()) {
+    s = iiter->status();
+  }
+  delete iiter;
+  return s;
+}
+
 
 uint64_t Table::ApproximateOffsetOf(const Slice& key) const {
   Iterator* index_iter =

@@ -16,9 +16,9 @@ set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-#SET(CMAKE_BUILD_TYPE "Debug")
-#SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -Wall -g2 -ggdb")
-#SET(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -O3 -Wall")
+SET(CMAKE_BUILD_TYPE "Debug")
+SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -Wall -g2 -ggdb")
+SET(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -O3 -Wall")
 
 if (WIN32)
   set(LEVELDB_PLATFORM_NAME LEVELDB_PLATFORM_WINDOWS)
@@ -346,7 +346,8 @@ if(LEVELDB_BUILD_TESTS)
   leveldb_test("${PROJECT_SOURCE_DIR}/util/no_destructor_test.cc")
 
   if(NOT BUILD_SHARED_LIBS)
-
+    leveldb_test("${PROJECT_SOURCE_DIR}/test/compaction_observation.cc")
+    leveldb_test("${PROJECT_SOURCE_DIR}/db/en_test.cc")
     leveldb_test("${PROJECT_SOURCE_DIR}/db/autocompact_test.cc")
     leveldb_test("${PROJECT_SOURCE_DIR}/db/corruption_test.cc")
     leveldb_test("${PROJECT_SOURCE_DIR}/db/db_test.cc")

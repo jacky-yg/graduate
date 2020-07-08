@@ -18,7 +18,7 @@ int main() {
     options.create_if_missing=true;
     std::string dbpath="testdb";
     leveldb::Status status=leveldb::DB::Open(options,dbpath,&db);
-   
+    
 
     
     options.block_restart_interval = 4;
@@ -38,9 +38,8 @@ int main() {
     table_builder.Add("cope", "value");
     table_builder.Add("copy", "value");
     table_builder.Add("corn", "value");
-    
-    
 
+    
    
     status = table_builder.Finish();
     std::cout << status.ToString() << std::endl;
@@ -53,7 +52,7 @@ int main() {
 
     
     file->Close();
-    delete db;
+    
    /* uint64_t file_size;
     leveldb:: Status s = leveldb::Env::Default()->GetFileSize(file_name, &file_size);
     std::cout<<file_size<<std::endl;
@@ -130,32 +129,25 @@ void scan_by_table_iterator() {
             file,
             file_stat.st_size,
             &table);
-
     std::cout << "leveldb::Table::Open status:" << status.ToString() << std::endl;
-   //  std::cout<<"before seek"<<std::endl;
-    leveldb::Iterator* iter = table->NewIterator(leveldb::ReadOptions());
-    
-   iter->SeekToFirst();
-    if(iter->Valid())
-	std::cout<<"valid"<<std::endl;
-   iter->Seek("confuse");
-   std::cout << iter->key().ToString() << "->" << iter->value().ToString() << std::endl;
-   iter->Seek("contend");
-   std::cout << iter->key().ToString() << "->" << iter->value().ToString() << std::endl;
-   iter->Seek("cope");
-   std::cout << iter->key().ToString() << "->" << iter->value().ToString() << std::endl;
-   iter->Seek("copy");
-   std::cout << iter->key().ToString() << "->" << iter->value().ToString() << std::endl;
-   iter->Seek("corn");
-   std::cout << iter->key().ToString() << "->" << iter->value().ToString() << std::endl;
 
+    leveldb::Iterator* iter = table->NewIterator(leveldb::ReadOptions());       if(iter->Valid())
+         std::cout<<"valid"<<std::endl;
+
+    iter->SeekToFirst();
+    
+    if(iter->Valid())
+         std::cout<<"valid"<<std::endl;
+
+    // iter->Seek("copy");
+   // std::cout << iter->key().ToString() << "->" << iter->value().ToString() << std::endl;
 
    
 
-    /*while (iter->Valid()) {
+   while (iter->Valid()) {
         std::cout << iter->key().ToString() << "->" << iter->value().ToString() << std::endl;
         iter->Next();
-    }*/
+    }
 
     delete iter;
     delete file;

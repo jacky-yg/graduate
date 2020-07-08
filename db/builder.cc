@@ -21,28 +21,38 @@ Status BuildTable(const std::string& dbname, Env* env, const Options& options,
   iter->SeekToFirst();
 
   std::string fname = TableFileName(dbname, meta->number);
+  std::string kfname = KeyTableFileName(meta->number);
+
   if (iter->Valid()) {
     WritableFile* file;
+
     s = env->NewWritableFile(fname, &file);
+
     if (!s.ok()) {
       return s;
     }
 
-    TableBuilder* builder = new TableBuilder(options, file);
+    TableBuilder* builder = new TableBuilder(options, file, kfname);
+
     meta->smallest.DecodeFrom(iter->key());
     for (; iter->Valid(); iter->Next()) {
       Slice key = iter->key();
       meta->largest.DecodeFrom(key);
       builder->Add(key, iter->value());
+
     }
+
 
     // Finish and check for builder errors
     s = builder->Finish();
+
     if (s.ok()) {
       meta->file_size = builder->FileSize();
+
       assert(meta->file_size > 0);
     }
     delete builder;
+
 
     // Finish and check for file errors
     if (s.ok()) {

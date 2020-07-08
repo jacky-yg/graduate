@@ -36,18 +36,12 @@
 #include "util/coding.h"
 #include "util/logging.h"
 #include "util/mutexlock.h"
-#include "aes_gcm.h"
 
-
-
-#define AAD_SIZE 32
-#define TAG_SIZE 16		/* Valid values are 16, 12, or 8 */
-#define KEY_SIZE GCM_256_KEY_LEN
-#define IV_SIZE  GCM_IV_DATA_LEN
 
 namespace leveldb {
 
 const int kNumNonTableCacheFiles = 10;
+static int exist = 0 ;
 
 // Information kept for every waiting writer
 struct DBImpl::Writer {
@@ -820,9 +814,10 @@ Status DBImpl::OpenCompactionOutputFile(CompactionState* compact) {
 
   // Make the output file
   std::string fname = TableFileName(dbname_, file_number);
+  std::string kfname = KeyTableFileName(file_number);
   Status s = env_->NewWritableFile(fname, &compact->outfile);
   if (s.ok()) {
-    compact->builder = new TableBuilder(options_, compact->outfile);
+    compact->builder = new TableBuilder(options_, compact->outfile, kfname);
   }
   return s;
 }
@@ -1198,30 +1193,11 @@ void DBImpl::ReleaseSnapshot(const Snapshot* snapshot) {
   snapshots_.Delete(static_cast<const SnapshotImpl*>(snapshot));
 }
 
-const Slice DBImpl::Encrypt_Put(const Slice& val) { // 加密value 20200622
-  struct gcm_key_data gkey;
-  struct gcm_context_data gctx;
-  uint8_t ct[val.size()], pt[val.size()], pt2[val.size()];	// Cipher text and plain text
-  uint8_t iv[IV_SIZE], aad[AAD_SIZE], key[KEY_SIZE];	// Key and authentication data
-  uint8_t tag1[TAG_SIZE], tag2[TAG_SIZE];	// Authentication tags for encode and decode
-
-  memset(iv, 0, IV_SIZE);
-  memset(aad, 0, AAD_SIZE);
-
-  memcpy(pt,val.data(),val.size());
-  aes_gcm_pre_256(key, &gkey);
-  aes_gcm_enc_256(&gkey, &gctx, ct, pt, val.size(), iv, aad, AAD_SIZE, tag1, TAG_SIZE);
-
-  std::string value( reinterpret_cast<char const*>(ct),val.size()) ; // 轉 string
-  const Slice encrypted_val(value); //生成 slice
-
-  return encrypted_val;
-}
 
 // Convenience methods
 Status DBImpl::Put(const WriteOptions& o, const Slice& key, const Slice& val) {
-  const Slice value = Encrypt_Put(val);
-  return DB::Put(o, key, value);
+
+  return DB::Put(o, key, val);
 }
 
 Status DBImpl::Delete(const WriteOptions& options, const Slice& key) {
@@ -1511,6 +1487,16 @@ Status DB::Delete(const WriteOptions& opt, const Slice& key) {
 
 DB::~DB() = default;
 
+void DB::Open_Key_Space() {
+    leveldb::DB *db2;
+    leveldb::Options option;
+    option.create_if_missing = true;
+    exist = 1;
+    leveldb::DB::Open(option,"/en/leveldb_key",&db2);
+}
+
+
+
 Status DB::Open(const Options& options, const std::string& dbname, DB** dbptr) {
   *dbptr = nullptr;
 
@@ -1520,6 +1506,7 @@ Status DB::Open(const Options& options, const std::string& dbname, DB** dbptr) {
   // Recover handles create_if_missing, error_if_exists
   bool save_manifest = false;
   Status s = impl->Recover(&edit, &save_manifest);
+
   if (s.ok() && impl->mem_ == nullptr) {
     // Create new log and a corresponding memtable.
     uint64_t new_log_number = impl->versions_->NewFileNumber();

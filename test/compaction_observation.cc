@@ -31,11 +31,12 @@ int main()
     assert(status.ok());
 
 	srand(5);
-	int entries = 10000000;
+	int entries = 5000;
 	int min = 1;
 	int max = 100000000;
 	std::string value = "1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111";
-
+        status = db->Put(leveldb::WriteOptions(),"test",value);
+	assert(status.ok());
 	for(int i = 0; i < entries; i++)
 	{
 
@@ -51,7 +52,10 @@ int main()
 		assert(status.ok());
 	}
 
-
+        
+        std::string result1;
+        status = db->Get(leveldb::ReadOptions(),"test", &result1);
+	std::cout <<"result1="<< result1 << std::endl;
 
     delete db;
     return 0;

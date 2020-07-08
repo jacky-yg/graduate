@@ -4,10 +4,14 @@
 
 #include "db/version_set.h"
 
-#include <stdio.h>
-
+#include<stdio.h>
+#include<stdlib.h>
+#include<sys/wait.h>
+#include <assert.h>
+#include <unistd.h>
+#include <iostream>
 #include <algorithm>
-
+#include <iostream>
 #include "db/filename.h"
 #include "db/log_reader.h"
 #include "db/log_writer.h"
@@ -352,9 +356,14 @@ Status Version::Get(const ReadOptions& options, const LookupKey& k,
       state->last_file_read = f;
       state->last_file_read_level = level;
 
+
+
       state->s = state->vset->table_cache_->Get(*state->options, f->number,
                                                 f->file_size, state->ikey,
                                                 &state->saver, SaveValue);
+      //std::cout<<state->ikey.ToString()<<std::endl;
+      std::cout<<f->number<<std::endl;
+
       if (!state->s.ok()) {
         state->found = true;
         return false;
@@ -363,6 +372,7 @@ Status Version::Get(const ReadOptions& options, const LookupKey& k,
         case kNotFound:
           return true;  // Keep searching in other files
         case kFound:
+
           state->found = true;
           return false;
         case kDeleted:
